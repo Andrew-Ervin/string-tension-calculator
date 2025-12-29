@@ -50,6 +50,8 @@ export function Summary() {
   const [woundMin, setWoundMin] = useState(globalTargetWound[0]);
   const [woundMax, setWoundMax] = useState(globalTargetWound[1]);
   const [optimizing, setOptimizing] = useState(false);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ show: boolean; content: string; x: number; y: number } | null>(null);
 
   const handleOptimize = async () => {
     setOptimizing(true);
@@ -207,6 +209,72 @@ export function Summary() {
     ? Math.max(...guitars.map(g => g.n_strings))
     : 0;
 
+  const handleDragStart = (e: React.DragEvent, guitarIdx: number, stringIdx: number) => {
+    console.log('Drag start:', guitarIdx, stringIdx);
+    e.dataTransfer.setData('text/plain', JSON.stringify({ guitarIdx, stringIdx }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, newGauge: number, newType: 'p' | 'w') => {
+    console.log('Drop on:', newGauge, newType);
+    e.preventDefault();
+    setDragOverKey(null);
+    const data = e.dataTransfer.getData('text/plain');
+    console.log('Drop data:', data);
+    try {
+      const { guitarIdx, stringIdx } = JSON.parse(data);
+      console.log('Parsed:', guitarIdx, stringIdx);
+      const currentSel = selections[guitarIdx.toString()]?.[stringIdx];
+      console.log('Current sel:', currentSel);
+      if (currentSel) {
+        console.log('Dispatching update');
+        dispatch({
+          type: 'UPDATE_STRING_SELECTION',
+          payload: { guitarIdx, stringIdx, selection: { gauge: newGauge, type: newType } }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to parse drag data:', error);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, key: string) => {
+    console.log('Drag over:', key);
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverKey(key);
+  };
+
+  const handleMouseEnter = (e: React.MouseEvent, content: string) => {
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setTooltip({
+      show: true,
+      content,
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltip(null);
+  };
+
+  const getGuitarColor = (index: number) => {
+    const guitarColors = [
+      '#FFB3BA', // light red
+      '#FFDFBA', // light orange
+      '#FFFFBA', // light yellow
+      '#BAFFBA', // light green
+      '#BAE1FF', // light blue
+      '#D4BAFF', // light purple
+      '#FFBAE1', // light pink
+      '#BAFFD4', // light mint
+      '#FFD4BA', // light peach
+      '#E1BAFF', // light lavender
+    ];
+    return guitarColors[index % guitarColors.length];
+  };
+
   return (
     <div className="summary-page">
       <section className="section">
@@ -255,9 +323,13 @@ export function Summary() {
                           <td
                             key={sIdx}
                             className={`text-center gauge-cell ${sel.type === 'p' ? 'plain' : 'wound'} ${!inRange ? 'out-of-range' : ''}`}
-                            title={`${tension.toFixed(1)} lb`}
                           >
-                            {formatGauge(sel.gauge)}
+                            <span 
+                              onMouseEnter={(e) => handleMouseEnter(e, `${tension.toFixed(1)} lb${!inRange ? ` (${tension < target[0] ? 'min' : 'max'}: ${target[tension < target[0] ? 0 : 1].toFixed(1)})` : ''}`)}
+                              onMouseLeave={handleMouseLeave}
+                            >
+                              {formatGauge(sel.gauge)}
+                            </span>
                           </td>
                         );
                       })}
@@ -275,7 +347,7 @@ export function Summary() {
         {gaugeUsages.length === 0 ? (
           <p className="text-muted">No gauge data.</p>
         ) : (
-          <div className="table-container">
+          <div className="table-container" onDragOver={(e) => e.preventDefault()}>
             <table className="inventory-table">
               <thead>
                 <tr>
@@ -288,21 +360,49 @@ export function Summary() {
               </thead>
               <tbody>
                 {gaugeUsages.map((usage) => (
-                  <tr key={`${usage.gauge}-${usage.type}`} className={usage.count === 1 ? 'singleton' : ''}>
-                    <td className={`text-center gauge-cell ${usage.type === 'p' ? 'plain' : 'wound'}`}>
+                  <tr 
+                    key={`${usage.gauge}-${usage.type}`} 
+                    className={`${usage.count === 1 ? 'singleton' : ''} ${dragOverKey === `${usage.gauge}-${usage.type}` ? 'drag-over' : ''}`}
+                    onDrop={(e) => handleDrop(e, usage.gauge, usage.type)}
+                  >
+                    <td 
+                      className={`text-center gauge-cell ${usage.type === 'p' ? 'plain' : 'wound'}`}
+                      onDragOver={(e) => handleDragOver(e, `${usage.gauge}-${usage.type}`)}
+                    >
                       {formatGauge(usage.gauge)}
                     </td>
-                    <td className="text-center type-cell">{usage.type}</td>
-                    <td className="text-center count-cell">{usage.count}</td>
-                    <td className="text-left usage-list">
+                    <td 
+                      className="text-center type-cell"
+                      onDragOver={(e) => handleDragOver(e, `${usage.gauge}-${usage.type}`)}
+                    >
+                      {usage.type}
+                    </td>
+                    <td 
+                      className="text-center count-cell"
+                      onDragOver={(e) => handleDragOver(e, `${usage.gauge}-${usage.type}`)}
+                    >
+                      {usage.count}
+                    </td>
+                    <td 
+                      className="text-left usage-list"
+                    >
                       {usage.usages.map((u, i) => (
-                        <span key={i} className="usage-item">
+                        <div 
+                          key={i} 
+                          className="usage-pill"
+                          style={{ borderColor: getGuitarColor(u.guitarIdx) }}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, u.guitarIdx, u.stringIdx)}
+                          onDragEnd={() => setDragOverKey(null)}
+                        >
                           {u.guitarName} #{u.stringIdx + 1}
-                          {i < usage.usages.length - 1 && ', '}
-                        </span>
+                        </div>
                       ))}
                     </td>
-                    <td className="text-left swap-cell">
+                    <td 
+                      className="text-left swap-cell"
+                      onDragOver={(e) => handleDragOver(e, `${usage.gauge}-${usage.type}`)}
+                    >
                       {usage.swapOption ? (
                         <div className={`swap-option ${usage.swapOption.inRange ? 'in-range' : 'out-of-range'}`}>
                           <span className="swap-to">
@@ -391,6 +491,29 @@ export function Summary() {
           </div>
         </div>
       </section>
+      {tooltip?.show && (
+        <div
+          className="custom-tooltip"
+          style={{
+            position: 'fixed',
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: 'translate(-50%, -100%)',
+            background: 'var(--bg-card)',
+            color: 'var(--text-primary)',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '4px',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--shadow-lg)',
+            fontSize: '0.875rem',
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+        >
+          {tooltip.content}
+        </div>
+      )}
     </div>
   );
 }

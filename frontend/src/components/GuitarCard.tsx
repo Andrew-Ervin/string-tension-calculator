@@ -36,6 +36,22 @@ export function GuitarCard({
   const scales = resolveScales(guitar.scale, guitar.n_strings);
   const types = resolveStringTypes(guitar.string_types, guitar.n_strings);
 
+  const getGuitarColor = (index: number) => {
+    const guitarColors = [
+      '#FFB3BA', // light red
+      '#FFDFBA', // light orange
+      '#FFFFBA', // light yellow
+      '#BAFFBA', // light green
+      '#BAE1FF', // light blue
+      '#D4BAFF', // light purple
+      '#FFBAE1', // light pink
+      '#BAFFD4', // light mint
+      '#FFD4BA', // light peach
+      '#E1BAFF', // light lavender
+    ];
+    return guitarColors[index % guitarColors.length];
+  };
+
   const updateGuitar = (updates: Partial<Guitar>) => {
     dispatch({
       type: 'UPDATE_GUITAR',
@@ -158,7 +174,7 @@ export function GuitarCard({
   }, 0);
 
   return (
-    <div className={`guitar-card ${expanded ? 'expanded' : ''}`}>
+    <div className={`guitar-card ${expanded ? 'expanded' : ''}`} style={{ borderLeft: `4px solid ${getGuitarColor(index)}` }}>
       <div className="guitar-header" onClick={onToggle}>
         <span className="expand-icon">{expanded ? '▼' : '▶'}</span>
         <span className="guitar-title">{guitar.name}</span>
