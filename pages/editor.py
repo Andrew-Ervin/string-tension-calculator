@@ -23,8 +23,15 @@ def dict_to_guitar(d):
     )
 
 
-def build_guitar_card(guitar_dict, idx):
-    """Build a card for one guitar with editable properties."""
+def build_guitar_card(guitar_dict, idx, selections=None):
+    """Build a card for one guitar with editable properties.
+    
+    Args:
+        guitar_dict: Guitar data dictionary
+        idx: Guitar index
+        selections: Optional dict of saved selections for this guitar
+                   Format: [{"gauge": 0.01, "type": "p"}, ...]
+    """
     guitar = dict_to_guitar(guitar_dict)
     scales = resolve_scales(guitar.scale, guitar.n_strings)
     types = resolve_string_types(guitar.string_types, guitar.n_strings)
@@ -41,7 +48,12 @@ def build_guitar_card(guitar_dict, idx):
         stype = types[i]
         freq = note_to_freq(note)
         target = guitar.target_plain if stype == "p" else guitar.target_wound
-        rec_gauge = recommend_gauge(stype, scale, freq, target)
+        
+        # Use saved selection if available, otherwise recommend
+        if selections and i < len(selections) and selections[i].get("gauge"):
+            rec_gauge = selections[i]["gauge"]
+        else:
+            rec_gauge = recommend_gauge(stype, scale, freq, target)
         gauge_options = PLAIN_GAUGES if stype == "p" else WOUND_GAUGES
         
         row = html.Tr([
@@ -205,11 +217,20 @@ def build_guitar_card(guitar_dict, idx):
     ], className="mb-4", id={"type": "guitar-card", "guitar": idx})
 
 
-def build_all_cards(guitars_data):
-    """Build all guitar cards from guitars data."""
+def build_all_cards(guitars_data, all_selections=None):
+    """Build all guitar cards from guitars data.
+    
+    Args:
+        guitars_data: List of guitar data dictionaries
+        all_selections: Optional dict mapping guitar index (as string) to selections list
+    """
     if not guitars_data:
         return []
-    return [build_guitar_card(g, i) for i, g in enumerate(guitars_data)]
+    cards = []
+    for i, g in enumerate(guitars_data):
+        sel = all_selections.get(str(i)) if all_selections else None
+        cards.append(build_guitar_card(g, i, sel))
+    return cards
 
 
 # Initial layout - guitars rendered via callback
@@ -225,10 +246,12 @@ layout = html.Div([
                     dbc.Label("Global Plain Target", className="mb-1"),
                     dbc.InputGroup([
                         dbc.Input(id="global-plain-min", type="number", value=13.0, 
-                                 size="sm", step=0.5, style={"width": "70px"}),
+                                 size="sm", step=0.5, style={"width": "70px"},
+                                 persistence=True, persistence_type="memory"),
                         dbc.InputGroupText("-", style={"padding": "0 6px"}),
                         dbc.Input(id="global-plain-max", type="number", value=15.5, 
-                                 size="sm", step=0.5, style={"width": "70px"}),
+                                 size="sm", step=0.5, style={"width": "70px"},
+                                 persistence=True, persistence_type="memory"),
                         dbc.InputGroupText("lb"),
                     ], size="sm"),
                 ], width=4),
@@ -236,10 +259,12 @@ layout = html.Div([
                     dbc.Label("Global Wound Target", className="mb-1"),
                     dbc.InputGroup([
                         dbc.Input(id="global-wound-min", type="number", value=16.0, 
-                                 size="sm", step=0.5, style={"width": "70px"}),
+                                 size="sm", step=0.5, style={"width": "70px"},
+                                 persistence=True, persistence_type="memory"),
                         dbc.InputGroupText("-", style={"padding": "0 6px"}),
                         dbc.Input(id="global-wound-max", type="number", value=20.0, 
-                                 size="sm", step=0.5, style={"width": "70px"}),
+                                 size="sm", step=0.5, style={"width": "70px"},
+                                 persistence=True, persistence_type="memory"),
                         dbc.InputGroupText("lb"),
                     ], size="sm"),
                 ], width=4),
@@ -272,13 +297,14 @@ layout = html.Div([
 @callback(
     Output("guitars-container", "children"),
     Input("guitars-store", "data"),
+    State("string-selections", "data"),
 )
-def render_guitars(guitars_data):
-    """Render guitar cards from store."""
+def render_guitars(guitars_data, selections):
+    """Render guitar cards from store, using saved selections for gauge values."""
     if not guitars_data:
         return html.P("No guitars defined. Click 'Add Guitar' to create one.", 
                      className="text-muted text-center")
-    return build_all_cards(guitars_data)
+    return build_all_cards(guitars_data, selections)
 
 
 @callback(
@@ -382,6 +408,12 @@ def update_guitar_specs(names, n_strings_list, treble_scales, bass_scales,
                         tp_mins, tp_maxs, tw_mins, tw_maxs, all_notes, guitars_data):
     """Update guitar specs when inputs change."""
     if not guitars_data or not names:
+        return no_update
+    
+    # Ignore if triggered by multiple inputs at once (indicates re-render, not user edit)
+    # When user edits one field, only one input triggers
+    triggered = ctx.triggered
+    if len(triggered) > 3:  # Re-render triggers many inputs at once
         return no_update
     
     updated = []

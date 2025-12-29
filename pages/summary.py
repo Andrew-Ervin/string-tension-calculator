@@ -240,8 +240,8 @@ layout = html.Div([
     Input("guitars-store", "data"),
 )
 def update_summary(pathname, selections, guitars_data):
-    """Update summary tables when selections or guitars change."""
-    # Use loaded defaults if stores are empty
+    """Update summary tables when page loads or data changes."""
+    # Only use defaults if stores are truly empty (first load)
     if not guitars_data:
         guitars_data = load_guitars()
     if not selections:
