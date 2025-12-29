@@ -1,0 +1,165 @@
+/* String Tension Calculator - Global Styles */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Dark theme - sophisticated palette */
+  --bg-primary: #09090b;
+  --bg-secondary: #0f0f11;
+  --bg-tertiary: #1a1a1d;
+  --bg-card: #111113;
+  --bg-input: #18181b;
+  --bg-hover: rgba(255, 255, 255, 0.03);
+  --bg-warning: rgba(251, 191, 36, 0.08);
+  
+  --text-primary: #f4f4f5;
+  --text-secondary: #8b8b8f;
+  --text-muted: #4a4a4d;
+  
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-focus: rgba(167, 139, 250, 0.4);
+  
+  --color-accent: #a78bfa;
+  --color-accent-hover: #c4b5fd;
+  --color-accent-glow: rgba(167, 139, 250, 0.12);
+  --color-success: #5eead4;
+  --color-success-hover: #2dd4bf;
+  --color-danger: #fdba74;
+  --color-danger-hover: #fb923c;
+  --color-danger-bg: rgba(253, 186, 116, 0.08);
+  --color-warning: #fde68a;
+  
+  --color-plain: #a1a1aa;
+  --color-wound: #a78bfa;
+  
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px var(--color-accent-glow);
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 15px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  min-height: 100vh;
+}
+
+.app-header {
+  text-align: center;
+  padding: 2.5rem 0 2rem;
+}
+
+.app-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.app-nav {
+  display: inline-flex;
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  gap: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.nav-link {
+  padding: 0.6rem 1.5rem;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.nav-link.active {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  font-weight: 500;
+}
+
+.app-main {
+  padding: 1.5rem 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Form element resets */
+input, select, button {
+  font-family: inherit;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+/* Selection */
+::selection {
+  background: var(--color-accent);
+  color: var(--bg-primary);
+}
