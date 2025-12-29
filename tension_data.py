@@ -1,56 +1,24 @@
-from dataclasses import dataclass
+import os
+import yaml
 from typing import List, Union, Optional
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Constants
+# Load string weight data from YAML
 # ─────────────────────────────────────────────────────────────────────────────
 
-PLAIN_UNIT_WEIGHTS = {
-    0.007: 0.00001085, 0.008: 0.00001418, 0.0085: 0.00001601,
-    0.009: 0.00001794, 0.0095: 0.00001999, 0.010: 0.00002215,
-    0.0105: 0.00002442, 0.011: 0.00002680, 0.0115: 0.00002930,
-    0.012: 0.00003190, 0.013: 0.00003744, 0.0135: 0.00004037,
-    0.014: 0.00004342, 0.015: 0.00004984, 0.016: 0.00005671,
-    0.017: 0.00006402, 0.018: 0.00007177, 0.019: 0.00007997,
-    0.020: 0.00008861, 0.022: 0.00010722, 0.024: 0.00012760,
-    0.026: 0.00014975,
-}
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
-WOUND_UNIT_WEIGHTS = {
-    0.017: 0.00005524,
-    0.018: 0.00006215,
-    0.019: 0.00006947,
-    0.020: 0.00007495,
-    0.021: 0.00008293,
-    0.022: 0.00009184,
-    0.024: 0.00010857,
-    0.026: 0.00012671,
-    0.028: 0.00014666,
-    0.030: 0.00017236,
-    0.032: 0.00019347,
-    0.034: 0.00021590,
-    0.036: 0.00023964,
-    0.038: 0.00026471,
-    0.039: 0.00027932,
-    0.042: 0.00032279,
-    0.044: 0.00035182,
-    0.046: 0.00038216,
-    0.048: 0.00041382,
-    0.049: 0.00043014,
-    0.052: 0.00048109,
-    0.054: 0.00053838,
-    0.056: 0.00057598,
-    0.059: 0.00064191,
-    0.060: 0.00066542,
-    0.062: 0.00070697,
-    0.064: 0.00074984,
-    0.066: 0.00079889,
-    0.068: 0.00084614,
-    0.070: 0.00089304,
-    0.072: 0.00094124,
-    0.074: 0.00098869,
-    0.080: 0.00115011,
-}
+def _load_string_weights():
+    """Load string unit weights from YAML file."""
+    filepath = os.path.join(DATA_DIR, 'string_weights.yaml')
+    with open(filepath, 'r') as f:
+        data = yaml.safe_load(f)
+    # Convert string keys to float
+    plain = {float(k): v for k, v in data['plain'].items()}
+    wound = {float(k): v for k, v in data['wound'].items()}
+    return plain, wound
+
+PLAIN_UNIT_WEIGHTS, WOUND_UNIT_WEIGHTS = _load_string_weights()
 
 
 PLAIN_GAUGES = sorted(PLAIN_UNIT_WEIGHTS.keys())
@@ -153,10 +121,6 @@ def recommend_gauge(stype: str, scale: float, freq: float, target) -> float:
         if error < best_error:
             best_gauge, best_error = gauge, error
     return best_gauge
-
-
-def format_gauge(g: float) -> str:
-    return f".{str(g)[2:].ljust(3, '0')}"
 
 
 def optimize_gauges(guitars_data: list, current_selections: dict = None) -> dict:
@@ -340,123 +304,32 @@ def optimize_gauges(guitars_data: list, current_selections: dict = None) -> dict
     return result
 
 
-def normalize_note(note: str) -> str:
-    """Normalize note name (convert flats to sharps)."""
-    name = note[:-1] if note[-1].isdigit() else note
-    return FLAT_TO_SHARP.get(name, name)
-
-
-def get_interval(low: str, high: str) -> int:
-    """Get semitone interval between two notes (ignoring octave)."""
-    low_name = normalize_note(low)
-    high_name = normalize_note(high)
-    low_idx = NOTE_INDEX.get(low_name, 0)
-    high_idx = NOTE_INDEX.get(high_name, 0)
-    interval = (high_idx - low_idx) % 12
-    return interval
-
-
-def tuning_name(tuning: List[str]) -> str:
-    """Generate tuning name detecting drop vs standard tunings."""
-    if not tuning or len(tuning) < 2:
-        return "Custom"
-    
-    root = normalize_note(tuning[-1])  # lowest note
-    
-    # Check if it's a drop tuning by comparing lowest two strings
-    # In standard: 5 semitones (perfect 4th) between strings
-    # In drop: 7 semitones (perfect 5th) between lowest two
-    second_lowest = tuning[-2] if len(tuning) >= 2 else tuning[-1]
-    interval = get_interval(tuning[-1], second_lowest)
-    
-    if interval == 7:  # Perfect 5th = drop tuning
-        return f"Drop {root}"
-    else:
-        return f"{root} Standard"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Guitar Specs
-# ─────────────────────────────────────────────────────────────────────────────
-
-@dataclass
-class GuitarSpec:
-    name: str
-    n_strings: int
-    scale: Union[float, List[float]]
-    tuning: List[str]
-    target_plain: Union[float, List[float]] = None  # [min, max] range
-    target_wound: Union[float, List[float]] = None  # [min, max] range
-    string_types: Optional[List[str]] = None
-    
-    def __post_init__(self):
-        if self.target_plain is None:
-            self.target_plain = [13.0, 15.5]
-        if self.target_wound is None:
-            self.target_wound = [16.0, 20.0]
-
-
-def dict_to_guitar(d: dict) -> GuitarSpec:
-    """Convert dict to GuitarSpec."""
-    return GuitarSpec(
-        name=d["name"],
-        n_strings=d["n_strings"],
-        scale=d["scale"],
-        tuning=d["tuning"],
-        string_types=d.get("string_types"),
-        target_plain=d.get("target_plain", [13.0, 15.5]),
-        target_wound=d.get("target_wound", [16.0, 20.0]),
-    )
-
-
-def guitar_to_dict(g: GuitarSpec) -> dict:
-    """Convert GuitarSpec to dict."""
-    return {
-        "name": g.name,
-        "n_strings": g.n_strings,
-        "scale": g.scale,
-        "tuning": g.tuning,
-        "string_types": g.string_types,
-        "target_plain": g.target_plain,
-        "target_wound": g.target_wound,
-    }
-
-
 def load_guitars() -> list:
-    """Load guitars from guitar_specs.py."""
-    from guitar_specs import GUITARS
-    return GUITARS
+    """Load guitars from YAML file."""
+    filepath = os.path.join(DATA_DIR, 'guitars.yaml')
+    with open(filepath, 'r') as f:
+        data = yaml.safe_load(f)
+    return data.get('guitars', [])
 
 
 def save_guitars(guitars: list) -> None:
-    """Save guitars to guitar_specs.py."""
-    import os
-    filepath = os.path.join(os.path.dirname(__file__), "guitar_specs.py")
+    """Save guitars to YAML file."""
+    filepath = os.path.join(DATA_DIR, 'guitars.yaml')
     
-    lines = [
-        "# Guitar specifications - this file is updated by the editor",
-        "# ─────────────────────────────────────────────────────────────────────────────",
-        "",
-        "GUITARS = [",
-    ]
-    
+    # Build clean data structure
+    data = {'guitars': []}
     for g in guitars:
-        lines.append("    {")
-        lines.append(f'        "name": {repr(g["name"])},')
-        lines.append(f'        "n_strings": {g["n_strings"]},')
-        lines.append(f'        "scale": {repr(g["scale"])},')
-        lines.append(f'        "tuning": {repr(g["tuning"])},')
-        lines.append(f'        "string_types": {repr(g.get("string_types"))},')
-        lines.append(f'        "target_plain": {repr(g.get("target_plain", [13.0, 15.5]))},')
-        lines.append(f'        "target_wound": {repr(g.get("target_wound", [16.0, 20.0]))},')
-        lines.append("    },")
+        guitar = {
+            'name': g['name'],
+            'n_strings': g['n_strings'],
+            'scale': g['scale'],
+            'tuning': g['tuning'],
+            'string_types': g.get('string_types'),
+            'target_plain': g.get('target_plain', [13.0, 15.5]),
+            'target_wound': g.get('target_wound', [16.0, 20.0]),
+        }
+        data['guitars'].append(guitar)
     
-    lines.append("]")
-    lines.append("")
-    
-    with open(filepath, "w") as f:
-        f.write("\n".join(lines))
-
-
-# Load guitars on import for backwards compatibility
-GUITARS = [dict_to_guitar(g) for g in load_guitars()]
+    with open(filepath, 'w') as f:
+        f.write('# Guitar specifications - edited by the app\n')
+        yaml.dump(data, f, default_flow_style=None, sort_keys=False, allow_unicode=True)

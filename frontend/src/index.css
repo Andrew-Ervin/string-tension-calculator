@@ -1,0 +1,55 @@
+/* Reset and base styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-tab-size: 4;
+  tab-size: 4;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Remove default margins */
+h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
+}
+
+/* Remove list styles */
+ul, ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Improve media defaults */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* Inherit fonts for form controls */
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Remove button styling */
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Remove link underlines */
+a {
+  text-decoration: none;
+  color: inherit;
+}
